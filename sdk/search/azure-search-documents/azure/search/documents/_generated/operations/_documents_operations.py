@@ -707,6 +707,27 @@ class DocumentsOperations:
         :raises ~azure.core.exceptions.HttpResponseError:
         """
 
+    def fix_url(self, url):
+        from urllib.parse import urlparse, parse_qs, urlunparse
+        parsed_url = urlparse(url)
+
+
+        # Check if the path is incorrectly formatted
+        segments = parsed_url.path.split('/')
+
+
+        index_name = segments[2][segments[2].find("'") + 1: segments[2].rfind("'")]
+        segments[2] = index_name
+        segments.remove('search.post.search')
+        segments.append('search')
+
+
+        # Construct the corrected URL
+        corrected_path = '/'.join(segments)
+        corrected_url = urlunparse((parsed_url.scheme, parsed_url.netloc, corrected_path,
+                                    parsed_url.params, parsed_url.query, parsed_url.fragment))
+        return corrected_url
+
     @distributed_trace
     def search_post(
         self,
@@ -769,6 +790,9 @@ class DocumentsOperations:
             "indexName": self._serialize.url("self._config.index_name", self._config.index_name, "str"),
         }
         _request.url = self._client.format_url(_request.url, **path_format_arguments)
+        # added fix_url
+        _request.url = self.fix_url(_request.url)
+
 
         _stream = False
         pipeline_response: PipelineResponse = self._client._pipeline.run(  # pylint: disable=protected-access
